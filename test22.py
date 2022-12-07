@@ -4,12 +4,14 @@ import cv2
 import time
 from pyzbar.pyzbar import decode
 import sqlite3
-
+import mysql.connector as mariadb
 # создание бд
-db = sqlite3.connect('server.db')
-sql = db.cursor()
+mariadb_connection = mariadb.connect(user='db1', password='db1', host='db',
+                                     port='3306', database='db1')
+cursor = mariadb_connection.cursor()
 
-sql.execute('''CREATE TABLE IF NOT EXISTS data (
+
+cursor.execute('''CREATE TABLE test2 (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     state TEXT,
     time TEXT,
@@ -19,9 +21,10 @@ sql.execute('''CREATE TABLE IF NOT EXISTS data (
     xmax TEXT,
     ymax TEXT,
     name TEXT
+    barcode TEXT
     )''')
 
-db.commit()
+mariadb_connection.commit()
 
 class MugDetection:
     """
@@ -128,12 +131,13 @@ class MugDetection:
             # Stream on
             if state == waiting_stream and cap.isOpened():
                 state = stream_on
-                sql.execute(f''' INSERT INTO data (state, time, frames, xmin, ymin, xmax, 
-                ymax, name)
-                                VALUES(?,?,?,?,?,?,?,?)''',
-                            (state, time.time(), None, None, None, None, None, None))
-                db.commit()
                 ## sql request
+                sql_st = f''' INSERT INTO test2 (state, time, frames, xmin, ymin, xmax, 
+                ymax, name, barcode) VALUES({state}, {time.time()}, None, None, None, None, 
+                None, None, None)'''
+                cursor.execute(sql_st)
+                mariadb_connection.commit()
+
 
             # Stream off
             if state == waiting_stream and cap.isOpened() == False:
@@ -146,21 +150,21 @@ class MugDetection:
             # stream on
             if state == stream_on:
                 state = waiting_barcode
-                sql.execute(f''' INSERT INTO data (state, time, frames, xmin, ymin, xmax, 
-                                ymax, name)
-                                                VALUES(?,?,?,?,?,?,?,?)''',
-                            (state, time.time(), None, None, None, None, None, None))
-                db.commit()
+                sql_st = f''' INSERT INTO test2 (state, time, frames, xmin, ymin, xmax, 
+                                ymax, name, barcode) VALUES({state}, {time.time()}, None, None, None, None, 
+                                None, None, None)'''
+                cursor.execute(sql_st)
+                mariadb_connection.commit()
                 ## sql request
 
             # stream was on but turn off
             if state == stream_on and cap.isOpened() == False:
                 state = waiting_stream
-                sql.execute(f''' INSERT INTO data (state, time, frames, xmin, ymin, xmax, 
-                                ymax, name)
-                                                VALUES(?,?,?,?,?,?,?,?)''',
-                            (state, time.time(), None, None, None, None, None, None))
-                db.commit()
+                sql_st = f''' INSERT INTO test2 (state, time, frames, xmin, ymin, xmax, 
+                                                ymax, name, barcode) VALUES({state}, {time.time()}, None, None, None, None, 
+                                                None, None, None)'''
+                cursor.execute(sql_st)
+                mariadb_connection.commit()
                 ## sql request
 
             if state != stream_on and cap.isOpened() == False:
@@ -191,6 +195,7 @@ class MugDetection:
                     x = None
                     state = waiting_barcode
                     # sql request
+
                 # d_b = [1,2]
                 # Check barcode in frame
             if state == waiting_barcode:
@@ -202,6 +207,12 @@ class MugDetection:
                     else:
                         is_bar_end.append(x)
                         state = decoded
+                sql_st = f''' INSERT INTO test2 (state, time, frames, xmin, ymin, xmax, 
+                            ymax, name, barcode) VALUES({state}, {time.time()}, None, 
+                            None, None, None,None, None, 
+                            barcode:{y[0].data.decode('utf-8')})'''
+                cursor.execute(sql_st)
+                mariadb_connection.commit()
 
             # should be state == decode, cap.isOpened() == True, x != None
 
@@ -302,11 +313,12 @@ class MugDetection:
                     xmax = appended_records[i][4]
                     ymax = appended_records[i][5]
                     name = appended_records[i][8]
-                    sql.execute(f''' INSERT INTO data (state, time, frames, xmin, ymin, 
-                    xmax, ymax, name)
-                                                    VALUES(?,?,?,?,?,?,?,?)''',
-                                (state, time_, colvo_frames, xmin, ymin, xmax, ymax, name))
-                db.commit()
+                    sql_st = f''' INSERT INTO test2 (state, time, frames, xmin, ymin, xmax, 
+                                                ymax, name, barcode) VALUES({state},{time_},{colvo_frames}, 
+                                                {xmin}, {ymin}, {xmax}, {ymax}, {name}, 
+                                                None)'''
+                    cursor.execute(sql_st)
+                mariadb_connection.commit()
 
                 # Esc is closed window
                 if cv2.waitKey(5) & 0xFF == 27:
