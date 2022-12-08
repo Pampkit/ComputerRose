@@ -210,7 +210,7 @@ class MugDetection:
                 sql_st = f''' INSERT INTO test2 (state, time, frames, xmin, ymin, xmax, 
                             ymax, name, barcode) VALUES({state}, {time.time()}, None, 
                             None, None, None,None, None, 
-                            barcode:{y[0].data.decode('utf-8')})'''
+                            barcode:{x[0].data.decode('utf-8')})'''
                 cursor.execute(sql_st)
                 mariadb_connection.commit()
 
